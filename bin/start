@@ -1,0 +1,2 @@
+#!/bin/sh
+~/src/appengine-java-sdk/bin/dev_appserver.sh war

@@ -1,0 +1,6 @@
+pom.xml
+*jar
+lib
+classes
+war/WEB-INF/lib
+war/WEB-INF/classes

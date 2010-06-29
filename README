@@ -1,0 +1,20 @@
+# clj-wiki
+
+Google App Engine-based Wiki written in Clojure
+
+## Usage
+
+Local viewing:
+
+    bin/compile
+    bin/start
+
+Deploy to GAE:
+
+    bin/deploy
+
+## License
+
+Copyright (C) 2010 Justin Kramer
+
+Distributed under the Eclipse Public License, the same as Clojure.

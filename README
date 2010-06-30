@@ -4,7 +4,12 @@ Google App Engine-based Wiki written in Clojure
 
 ## Usage
 
-Local viewing:
+Local REPL development:
+
+    ;; Eval clj-wiki.local and clj.wiki.core, then...
+    (clj-wiki.local/start-server wrapped-wiki-handler)
+
+Local viewing with App Engine tools:
 
     bin/compile
     bin/start
@@ -12,6 +17,10 @@ Local viewing:
 Deploy to GAE:
 
     bin/deploy
+
+## Acknowledgements
+
+Code for doing local REPL-based development on App Engine largely taken from http://github.com/christianberg/compojureongae.
 
 ## License
 

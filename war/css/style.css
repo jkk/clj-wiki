@@ -1,0 +1,101 @@
+body {
+    margin: 0;
+    padding: 0;
+    font-family: verdana, arial, helvetica, sans-serif;
+    font-size: 0.75em;
+    background: #ddd;
+}
+a:link, a:visited {
+    color: #35a;
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: underline;
+}
+#page-shell {
+    width: 900px;
+    margin: 0 auto;
+}
+h1 {
+    background: #5881d8;
+    border-bottom: 4px solid #90b4fe;
+    margin: 0;
+    padding: 0;
+    padding: 15px 20px 10px 20px;
+    font-family: helvetica, arial;
+    text-transform: uppercase;
+    font-size: 1.2em;
+}
+#masthead h1 a {
+    color: #fff;
+    text-decoration: none;
+}
+#session-info {
+    float: right;
+    width: 220px;
+    padding: 0 0 0 20px;
+    margin: 20px 0 20px 20px;
+}
+#logout-link, #login-link {
+    margin: 0 0 0 10px;
+}
+#login-link {
+    float: right;
+}
+.button {
+    padding: 2px 5px;
+    background: #eee;
+    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffffff', endColorstr='#dddddd');
+    background: -webkit-gradient(linear, left top, left bottom, from(#fff), to(#e8e8ff));
+    background: -moz-linear-gradient(top,  #fff,  #ddd);
+    border: 1px solid #ddf;
+    border-bottom: 1px solid #aaf;
+    border-right: 1px solid #aaf;
+}
+input[type=submit] {
+    font-family: verdana, arial, helvetica, sans-serif;
+    font-size: 1.1em;
+    color: #35a;
+    padding: 5px 10px;
+}
+#content-shell {
+    position: relative;
+    clear: both;
+    padding: 0 20px 50px 20px;
+    border-bottom: 1px solid #ccc;
+    background: #fff;
+}
+h2#page-title {
+    font-size: 1.5em;
+    margin: 0;
+    padding: 20px 0 10px 0;
+    zoom: 1;
+}
+#content {
+    min-height: 300px;
+}
+#username {
+    font-weight: bold;
+}
+.empty {
+    color: #aaa;
+}
+#page-info {
+    margin-top: 50px;
+    border-top: 2px solid #ddd;
+    padding: 10px 0;
+    color: #aaa;
+}
+#edit-link {
+    margin: 10px 0;
+    display: block;
+    width: 4.8em;
+}
+#edit-text {
+    font-family: menlo, monaco, consolas, courier-new;
+    font-size: 1.1em;
+    width: 600px;
+    height: 400px;
+    display: block;
+    margin: 0 0 10px 0;
+}

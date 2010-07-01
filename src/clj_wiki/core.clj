@@ -8,11 +8,12 @@
         [ring.middleware.flash :only [wrap-flash]]
         [ring.middleware.stacktrace :only [wrap-stacktrace]]
         [hiccup.core :only [h html]]
-        [hiccup.page-helpers :only [link-to doctype include-css]]
+        [hiccup.page-helpers :only [link-to doctype include-css include-js]]
         [clojure.contrib.string :only [join]])
   (:require [appengine.datastore :as ds]
             [appengine.users :as users])
-  (:import com.petebevin.markdown.MarkdownProcessor))
+  (:import com.petebevin.markdown.MarkdownProcessor
+           [com.google.appengine.api.datastore Text]))
 
 ;; config
 
@@ -44,20 +45,29 @@
 
 (defn get-wiki-page [name]
   (try
-    (ds/get-entity (ds/create-key "wiki-page" name))
+    (let [page (ds/get-entity (ds/create-key "wiki-page" name))]
+      (assoc page :content (.getValue (:content page))))
     (catch Exception _
       nil)))
 
-(defn save-wiki-page [name content]
-  (ds/create-entity {:kind "wiki-page"
-                     :key (ds/create-key "wiki-page" name)
-                     :name name
-                     :content content}))
+(defn save-wiki-page [name content see]
+  (let [ui (users/user-info)]
+    (ds/create-entity {:kind "wiki-page"
+                       :key (ds/create-key "wiki-page" name)
+                       :name name
+                       :content (Text. content)
+                       :see see
+                       :last-updated (.getTime (java.util.Date.))
+                       :updated-by (if (:user ui)
+                                     (.getEmail (:user ui))
+                                     "Anonymous")})))
 
 ;; layout / rendering
 
 (defn render-markdown [txt]
-  (.markdown markdown-processor txt))
+  ;; TODO: filter more tags? add easier code shorthand?
+  (.markdown markdown-processor
+             (.replace txt "<script" "")))
 
 (defn render-session-info []
   (let [ui (users/user-info)]
@@ -78,7 +88,13 @@
    [:html
     [:head
      [:title (str (h title) " - " (h site-title))]
-     (include-css "/css/style.css")]
+     (include-css "/css/style.css"
+                  "/css/shCore.css"
+                  "/css/shThemeDefault.css")
+     (include-js "/js/jquery.js"
+                 "/js/shCore.js"
+                 "/js/shBrushClojure.js"
+                 "/js/main.js")]
     [:body
      [:div#page-shell
       [:div#masthead
@@ -90,37 +106,81 @@
 
 (defn render-edit-form [page-name page]
   [:form {:method "POST" :action (uri page-name)}
+   [:p "Examples:"]
    [:textarea {:id "edit-text" :name "edit-text"} (:content page)]
+   [:p "See also (one function per line, namespace-qualified):"]
+   [:textarea {:id "see" :name "see"} (:see page)]
    [:input.button {:type "submit" :value "Save"}]])
 
 (defn render-wiki-page [page-name page edit?]
   (render-page
    page-name
    (html
+    (when-let [arglists (:arglists (meta (resolve (symbol page-name))))]
+      [:p#arglists (str arglists)])
+    (when-let [doc (:doc (meta (resolve (symbol page-name))))]
+      [:p#doc doc])
     (if edit?
       (render-edit-form page-name page)
       (if (nil? (:content page))
-        [:p.empty "[No content]"]
-        (render-markdown (:content page))))
+        [:p.empty "[No examples]"]
+        [:div#examples
+         [:h3 "Examples"]
+         (render-markdown (:content page))]))
     (when-not edit?
-      [:p#page-info
-       [:span#page-last-updated "Last updated XXX by YYY"]
-       [:span#edit-link.button (link-to (uri page-name {:edit 1})
-                                        "Edit page")]]))))
+      (html
+       (when (:see page)
+         [:div#see-shell
+          [:h3 "See Also"]
+          [:ul#see (for [f (.split #"[\r\n]+" (:see page))]
+                     [:li (link-to (uri f) f)])]])
+       [:p#page-info
+        [:span#page-last-updated
+         "Last updated " (:last-updated page)
+         " by " (:updated-by page)]
+        [:span#edit-link.button (link-to (uri page-name {:edit 1})
+                                         "Edit page")]])))))
+
+(defn render-wiki-page-list []
+  (let [pages (sort-by :name (get-wiki-pages))]
+    (render-page
+     "List of All Pages"
+     (html
+      [:ul#page-list
+       (for [page pages]
+         [:li (link-to (uri (:name page)) (:name page))])]))))
+
+(defn render-ns-list [ns]
+  (render-page
+   ns
+   (html
+    [:ul#ns-functions
+     (for [f (sort (map name (keys (ns-publics (symbol ns)))))]
+       [:li (link-to (uri ns f) f)])])))
 
 ;; request handlers
 
-(defn save-handler [req page-name page]
-  (save-wiki-page page-name ((:form-params req) "edit-text"))
+(defn save-handler [{params :form-params} page-name page]
+  (save-wiki-page page-name (params "edit-text") (params "see"))
   (redirect (uri page-name)))
 
 (defn wiki-handler [req]
   (let [page-name (url-decode (subs (:uri req) 1))
         page (get-wiki-page page-name)]
-    (if (= :get (:request-method req))
-      (response (render-wiki-page page-name page
-                                  ((:query-params req) "edit")))
-      (save-handler req page-name page))))
+    (cond
+     (try (ns-publics (symbol page-name))
+          (catch Exception _ nil))
+     (response (render-ns-list page-name))
+     
+     (= "list" page-name)
+     (response (render-wiki-page-list))
+     
+     (= :post (:request-method req))
+     (save-handler req page-name page)
+     
+     :else
+     (response (render-wiki-page page-name page
+                                 ((:query-params req) "edit"))))))
 
 (def wrapped-wiki-handler (-> wiki-handler
                               wrap-params

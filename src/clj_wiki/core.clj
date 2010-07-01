@@ -335,7 +335,8 @@
      [:form {:method "POST" :action (uri "preferences")}
       [:p "Display name: "
        [:input {:type "text" :id "display-name" :name "display-name"
-                :value (h (sess :display-name))}]]
+                :value (h (or (sess :display-name)
+                              (current-user-name)))}]]
       [:input.button {:type "submit" :value "Save"}]
       [:span#cancel (link-to (uri) "Cancel")]])))
 

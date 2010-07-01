@@ -11,7 +11,8 @@
         [hiccup.page-helpers :only [link-to doctype include-css include-js]]
         [clojure.contrib.string :only [join]])
   (:require [appengine.datastore :as ds]
-            [appengine.users :as users])
+            [appengine.users :as users]
+            [appengine.memcache :as mc])
   (:import com.petebevin.markdown.MarkdownProcessor
            [com.google.appengine.api.datastore Text]))
 
@@ -57,6 +58,23 @@
          (when (pos? (count params))
            (str "?" (map->query-string params))))))
 
+(defn now []
+  (.getTime (java.util.Date.)))
+
+;; TODO: unique IDs for anonymous?
+(defn current-user-id []
+  (let [ui (users/user-info)]
+    (if (:user ui)
+      (.getEmail (:user ui))
+      "Anonymous")))
+
+(defn current-user-name []
+  (let [ui (users/user-info)]
+    (if (:user ui)
+      (.getNickname (:user ui))
+      "Anonymous")))
+
+
 ;; wiki page model
 
 (defn get-wiki-pages []
@@ -84,15 +102,12 @@
       (ds/find-all)))
 
 (defn save-wiki-page [name content see]
-  (let [ui (users/user-info)
-        rec {:name name
+  (let [rec {:name name
              :content (Text. content)
              :see see
-             :last-updated (.getTime (java.util.Date.))
-             :updated-by (if (:user ui)
-                           (.getNickname (:user ui))
-                           "Anonymous")
-             :updated-by-id (when (:user ui) (.getEmail (:user ui)))}]
+             :last-updated (now)
+             :updated-by (current-user-name)
+             :updated-by-id (current-user-id)}]
     (ds/create-entity
      (merge rec {:kind "wiki-page"
                  :key (ds/create-key "wiki-page" name)}))
@@ -100,6 +115,17 @@
      (merge rec {:kind "wiki-page-history"
                  :key (ds/create-key "wiki-page-history"
                                      (str name " " (:last-updated rec)))}))))
+
+(defn get-other-user-editing [page-name]
+  (let [other-user (mc/get-value (str "editing:" page-name))]
+    (and other-user (not= other-user (current-user-id)))))
+
+(defn send-editing-ping [page-name]
+  (let [key (str "editing:" page-name)
+        stamp (mc/get-value key)]
+    (if stamp
+      (mc/replace-value key (current-user-id) 10)
+      (mc/put-value key (current-user-id) 10))))
 
 ;; layout / rendering
 
@@ -124,7 +150,7 @@
   (let [ui (users/user-info)]
     [:div#session-info
      (if-let [user (:user ui)]
-       [:div#login-info "Logged in as " [:span#username (.getNickname user)] " "
+       [:div#login-info "Logged in as " [:span#username (current-user-name)] " "
         [:span#logout-link.button
          (link-to (.createLogoutURL (:user-service ui) "/") "Log out")]]
        [:div#login-info
@@ -168,16 +194,23 @@
        [:div.clear]]]]]))
 
 (defn render-wiki-page-edit-form [page-name page]
-  (render-page
-   page-name
-   (html
-    [:form {:method "POST" :action (uri page-name)}
-     [:p "Examples:"]
-     [:textarea {:id "edit-text" :name "edit-text"} (h (:content page))]
-     [:p "See also (one function per line, namespace-qualified):"]
-     [:textarea {:id "see" :name "see"} (h (:see page))]
-     [:input.button {:type "submit" :value "Save"}]
-     [:span#cancel (link-to (uri page-name) "Cancel")]])))
+  (let [other-user (get-other-user-editing page-name)]
+    (when-not other-user
+      (send-editing-ping page-name))
+    (render-page
+     page-name
+     (html
+      (when other-user
+        [:p#other-user-notice
+         "Another user is currently editing this page."
+         " Please wait for them to finish."])
+      [:form {:method "POST" :action (uri page-name)}
+       [:p "Examples:"]
+       [:textarea {:id "edit-text" :name "edit-text"} (h (:content page))]
+       [:p "See also (one function per line, namespace-qualified):"]
+       [:textarea {:id "see" :name "see"} (h (:see page))]
+       [:input.button {:type "submit" :value "Save"}]
+       [:span#cancel (link-to (uri page-name) "Cancel")]]))))
 
 (defn render-wiki-page [page-name page & [revision]]
   (render-page

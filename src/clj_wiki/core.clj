@@ -179,7 +179,7 @@
      [:input.button {:type "submit" :value "Save"}]
      [:span#cancel (link-to (uri page-name) "Cancel")]])))
 
-(defn render-wiki-page [page-name page & [edit? revision]]
+(defn render-wiki-page [page-name page & [revision]]
   (render-page
    page-name
    (html
@@ -285,8 +285,7 @@
         (render-wiki-page-edit-form page-name page)
         
         :else
-        (render-wiki-page page-name page
-                          (params "edit") (params "revision")))))))
+        (render-wiki-page page-name page (params "revision")))))))
 
 (def wrapped-wiki-handler (-> wiki-handler
                               wrap-params

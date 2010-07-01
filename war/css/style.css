@@ -175,3 +175,9 @@ th {
     background: #fec;
     padding: 10px;
 }
+pre.revision-source {
+    margin: 0 0 10px 0 !important;
+    border: 1px solid #ccc;
+    padding: 10px;
+    background: #eee;
+}

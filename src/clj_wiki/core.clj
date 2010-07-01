@@ -36,6 +36,8 @@
               "clojure.xml"
               "clojure.zip"])
 
+(def history-limit 100)
+
 (def markdown-processor (MarkdownProcessor.))
 
 ;; utilities
@@ -88,8 +90,9 @@
              :see see
              :last-updated (.getTime (java.util.Date.))
              :updated-by (if (:user ui)
-                           (.getEmail (:user ui))
-                           "Anonymous")}]
+                           (.getNickname (:user ui))
+                           "Anonymous")
+             :updated-by-id (when (:user ui) (.getEmail (:user ui)))}]
     (ds/create-entity
      (merge rec {:kind "wiki-page"
                  :key (ds/create-key "wiki-page" name)}))
@@ -198,7 +201,11 @@
        [:h3 "See Also"]
        [:ul#see (for [f (.split #"[\r\n]+" (:see page))]
                   [:li (link-to (uri f) f)])]])
-    (when-not revision
+    (if revision
+      (html
+       [:h3 "Revision Source"]
+       [:pre.revision-source (h (:content page))]
+       [:pre.revision-source (h (:see page))])
       [:p#page-info
        [:span#edit-link.button (link-to (uri page-name {:edit 1})
                                         "Edit page")]
@@ -227,7 +234,7 @@
    (html
     [:table#changes
      [:tr [:th "Page"] [:th "When"] [:th "Who"]]
-     (for [page pages]
+     (for [page (take history-limit pages)]
        [:tr
         [:td (link-to (uri (:name page) {:revision (:last-updated page)})
                       (:name page))]

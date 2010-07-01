@@ -31,6 +31,23 @@ h1 {
     color: #fff;
     text-decoration: none;
 }
+#sidebar {
+    width: 190px;
+    clear: right;
+    float: right;
+    margin: 15px 0 0 10px;
+    padding: 0 0 0 10px;
+    border-left: 1px solid #ddd;
+}
+#sidebar h3 {
+    margin: 5px 0 10px 0;
+    padding: 0;
+}
+ul#ns-list {
+    margin: 0 0 0 30px;
+    padding: 0;
+    line-height: 1.6em;
+}
 #session-info {
     float: right;
     width: 300px;
@@ -75,7 +92,7 @@ h2#page-title {
 h3 {
     font-size: 14px;
 }
-#content {
+#main-content {
 /*    min-height: 300px;*/
     width: 650px;
 }
@@ -111,8 +128,9 @@ textarea#see {
     display: block;
     margin: 0 0 10px 0;
 }
-#content div.syntaxhighlighter {
+#main-content div.syntaxhighlighter {
     margin: 0 0 0 20px !important;
+    width: 580px !important;
 }
 pre {
     margin: 5px 0 0 25px;
@@ -132,4 +150,7 @@ pre.output {
     margin: 10px 0 10px 35px;
     border-left: 1px solid #ddd;
     font-size: 11px;
+}
+.clear {
+    clear: both;
 }

@@ -19,6 +19,23 @@
 
 (def site-title "Clj-Wiki")
 
+(def ns-list ["clojure.core"
+              "clojure.inspector"
+              "clojure.java.browse"
+              "clojure.java.io"
+              "clojure.java.javadoc"
+              "clojure.java.shell"
+              "clojure.main"
+              "clojure.pprint"
+              "clojure.repl"
+              "clojure.set"
+              "clojure.stacktrace"
+              "clojure.template"
+              "clojure.test"
+              "clojure.walk"
+              "clojure.xml"
+              "clojure.zip"])
+
 (def markdown-processor (MarkdownProcessor.))
 
 ;; utilities
@@ -65,9 +82,14 @@
 ;; layout / rendering
 
 (defn render-markdown [txt]
-  ;; TODO: filter more tags? add easier code shorthand?
+  ;; TODO: filter more tags?
   (.markdown markdown-processor
-             (.replace txt "<script" "")))
+             (-> txt
+                 (.replace "<script" "")
+                 (.replaceAll "~{3,}((?:.|[\r\n])+?)~{3,}"
+                              "<pre class=\"code\">$1</pre>")
+                 (.replaceAll ">{3,}((?:.|[\r\n])+?)>{3,}"
+                              "<pre class=\"output\">$1</pre>"))))
 
 (defn render-session-info []
   (let [ui (users/user-info)]
@@ -79,6 +101,13 @@
        [:div#login-info
         [:span#login-link.button
          (link-to (.createLoginURL (:user-service ui) "/") "Log in")]])]))
+
+(defn render-sidebar []
+  [:div#sidebar
+   [:h3 "Namespaces"]
+   [:ul#ns-list
+    (for [ns ns-list]
+      [:li (link-to (uri ns) ns)])]])
 
 (defn render-page [title & body]
   "Render a page using the given title and body. Title will be escaped,
@@ -101,15 +130,17 @@
        [:h1 (link-to "/" (h site-title))]]
       [:div#content-shell
        (render-session-info)
+       (render-sidebar)
        [:h2#page-title (h title)]
-       [:div#content body]]]]]))
+       [:div#main-content body]
+       [:div.clear]]]]]))
 
 (defn render-edit-form [page-name page]
   [:form {:method "POST" :action (uri page-name)}
    [:p "Examples:"]
-   [:textarea {:id "edit-text" :name "edit-text"} (:content page)]
+   [:textarea {:id "edit-text" :name "edit-text"} (h (:content page))]
    [:p "See also (one function per line, namespace-qualified):"]
-   [:textarea {:id "see" :name "see"} (:see page)]
+   [:textarea {:id "see" :name "see"} (h (:see page))]
    [:input.button {:type "submit" :value "Save"}]])
 
 (defn render-wiki-page [page-name page edit?]
@@ -119,7 +150,7 @@
     (when-let [arglists (:arglists (meta (resolve (symbol page-name))))]
       [:p#arglists (str arglists)])
     (when-let [doc (:doc (meta (resolve (symbol page-name))))]
-      [:p#doc doc])
+      [:p#doc (.replace doc "\n\n" "<br><br>")])
     (if edit?
       (render-edit-form page-name page)
       (if (nil? (:content page))
@@ -129,7 +160,7 @@
          (render-markdown (:content page))]))
     (when-not edit?
       (html
-       (when (:see page)
+       (when (pos? (count (:see page)))
          [:div#see-shell
           [:h3 "See Also"]
           [:ul#see (for [f (.split #"[\r\n]+" (:see page))]

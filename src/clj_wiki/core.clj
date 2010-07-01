@@ -5,7 +5,6 @@
         [ring.util.codec :only [url-encode url-decode]]
         [ring.middleware.params :only [wrap-params]]
         [ring.middleware.session :only [wrap-session]]
-        [ring.middleware.flash :only [wrap-flash]]
         [ring.middleware.stacktrace :only [wrap-stacktrace]]
         [hiccup.core :only [h html]]
         [hiccup.page-helpers :only [link-to doctype include-css include-js]]
@@ -74,6 +73,8 @@
       (.getNickname (:user ui))
       "Anonymous")))
 
+(defn logged-in? []
+  (:user (users/user-info)))
 
 ;; wiki page model
 
@@ -101,12 +102,12 @@
       (ds/order-by :last-updated :desc)
       (ds/find-all)))
 
-(defn save-wiki-page [name content see]
+(defn save-wiki-page [name input]
   (let [rec {:name name
-             :content (Text. content)
-             :see see
+             :content (Text. (input "edit-text"))
+             :see (input "see")
              :last-updated (now)
-             :updated-by (current-user-name)
+             :updated-by (input "user-display-name")
              :updated-by-id (current-user-id)}]
     (ds/create-entity
      (merge rec {:kind "wiki-page"
@@ -127,6 +128,18 @@
       (mc/replace-value key (current-user-id) 25)
       (mc/put-value key (current-user-id) 25))))
 
+(defn save-user-preferences [prefs]
+  (ds/create-entity {:kind "user"
+                     :key (ds/create-key "user" (current-user-id))
+                     :id (current-user-id)
+                     :display-name (prefs "display-name")}))
+
+(defn get-user-preferences []
+  (try
+    (ds/get-entity (ds/create-key "user" (current-user-id)))
+    (catch Exception _
+      {})))
+
 ;; layout / rendering
 
 (defn render-markdown [txt]
@@ -146,18 +159,21 @@
     (.format (java.text.SimpleDateFormat. "d MMM yyyy, hh:mm aaa z")
              (java.util.Date. ts))))
 
-(defn render-session-info []
+(defn render-session-info [req]
   (let [ui (users/user-info)]
     [:div#session-info
-     (if-let [user (:user ui)]
-       [:div#login-info "Logged in as " [:span#username (current-user-name)] " "
+     (if (boolean (logged-in?))
+       [:div#login-info "Logged in as " [:span#username
+                                         (or (:display-name (:session req))
+                                             (current-user-name))] " "
         [:span#logout-link.button
-         (link-to (.createLogoutURL (:user-service ui) "/") "Log out")]]
+         (link-to (.createLogoutURL (:user-service ui) (uri)) "Log out")]]
        [:div#login-info
         [:span#login-link.button
-         (link-to (.createLoginURL (:user-service ui) "/") "Log in")]])]))
+         (link-to (.createLoginURL (:user-service ui) (uri "preferences"))
+                  "Log in")]])]))
 
-(defn render-sidebar []
+(defn render-sidebar [req]
   [:div#sidebar
    [:h3 "Namespaces"]
    [:ul#ns-list
@@ -165,9 +181,11 @@
       [:li (link-to (uri ns) ns)])]
    [:h3 "Meta"]
    [:ul#meta
-    [:li (link-to (uri "changes") "Recent Changes")]]])
+    [:li (link-to (uri "changes") "Recent Changes")]
+    (when (:user (users/user-info))
+      [:li (link-to (uri "preferences") "Preferences")])]])
 
-(defn render-page [title & body]
+(defn render-page [req title & body]
   "Render a page using the given title and body. Title will be escaped,
   body will not."
   (html
@@ -187,17 +205,20 @@
       [:div#masthead
        [:h1 (link-to "/" (h site-title))]]
       [:div#content-shell
-       (render-session-info)
-       (render-sidebar)
+       (render-session-info req)
+       (render-sidebar req)
        [:h2#page-title (h title)]
        [:div#main-content body]
        [:div.clear]]]]]))
 
-(defn render-wiki-page-edit-form [page-name page]
-  (let [other-user (get-other-user-editing page-name)]
+(defn render-wiki-page-edit-form [page-name req]
+  (let [params (:query-params req)
+        page (get-wiki-page page-name (params "revision"))
+        other-user (get-other-user-editing page-name)]
     (when-not other-user
       (send-editing-ping page-name))
     (render-page
+     req
      page-name
      (html
       (if other-user
@@ -216,44 +237,50 @@
        [:input.button {:type "submit" :value "Save"}]
        [:span#cancel (link-to (uri page-name) "Cancel")]]))))
 
-(defn render-wiki-page [page-name page & [revision]]
-  (render-page
-   page-name
-   (html
-    (when revision
-      [:p#revision-notice "This is a revision from "
-       (render-timestamp (:last-updated page)) ". "
-       (link-to (uri page-name) "View current revision")])
-    (when-let [arglists (:arglists (meta (resolve (symbol page-name))))]
-      [:p#arglists (str arglists)])
-    (when-let [doc (:doc (meta (resolve (symbol page-name))))]
-      [:p#doc (.replace doc "\n\n" "<br><br>")])
-    (if (zero? (count (:content page)))
-      [:p.empty "[No examples]"]
-      [:div#examples
-       [:h3 "Examples"]
-       (render-markdown (:content page))])
-    (when (pos? (count (:see page)))
-      [:div#see-shell
-       [:h3 "See Also"]
-       [:ul#see (for [f (.split #"[\r\n]+" (:see page))]
-                  [:li (link-to (uri f) f)])]])
-    (if revision
-      (html
-       [:h3 "Revision Source"]
-       [:pre.revision-source (h (:content page))]
-       [:pre.revision-source (h (:see page))])
-      [:p#page-info
-       [:span#edit-link.button (link-to (uri page-name {:edit 1})
-                                        "Edit page")]
-       (when (:last-updated page)
-         [:span#page-last-updated
-          (link-to (uri page-name {:history 1})
-                   "Last updated " (render-timestamp (:last-updated page))
-                   " by " (:updated-by page))])]))))
+(defn render-wiki-page [page-name req]
+  (let [revision ((:query-params req) "revision")
+        page (get-wiki-page page-name revision)]
+    (render-page
+     req
+     page-name
+     (html
+      (when (:flash req)
+        [:p#flash (:flash req)])
+      (when revision
+        [:p#revision-notice "This is a revision from "
+         (render-timestamp (:last-updated page)) ". "
+         (link-to (uri page-name) "View current revision")])
+      (when-let [arglists (:arglists (meta (resolve (symbol page-name))))]
+        [:p#arglists (str arglists)])
+      (when-let [doc (:doc (meta (resolve (symbol page-name))))]
+        [:p#doc (.replace doc "\n\n" "<br><br>")])
+      (if (zero? (count (:content page)))
+        [:p.empty "[No examples]"]
+        [:div#examples
+         [:h3 "Examples"]
+         (render-markdown (:content page))])
+      (when (pos? (count (:see page)))
+        [:div#see-shell
+         [:h3 "See Also"]
+         [:ul#see (for [f (.split #"[\r\n]+" (:see page))]
+                    [:li (link-to (uri f) f)])]])
+      (if revision
+        (html
+         [:h3 "Revision Source"]
+         [:pre.revision-source (h (:content page))]
+         [:pre.revision-source (h (:see page))])
+        [:p#page-info
+         [:span#edit-link.button (link-to (uri page-name {:edit 1})
+                                          "Edit page")]
+         (when (:last-updated page)
+           [:span#page-last-updated
+            (link-to (uri page-name {:history 1})
+                     "Last updated " (render-timestamp (:last-updated page))
+                     " by " (:updated-by page))])])))))
 
-(defn render-wiki-page-changes [pages & [title]]
+(defn render-wiki-page-changes [pages req & [title]]
   (render-page
+   req
    (or title "Recent Changes")
    (html
     [:table#changes
@@ -265,71 +292,138 @@
         [:td (render-timestamp (:last-updated page))]
         [:td (:updated-by page)]])])))
 
-(defn render-wiki-page-history [page-name]
+(defn render-wiki-page-history [page-name req]
   (render-wiki-page-changes (get-wiki-page-history page-name)
+                            req
                             (str page-name " History")))
 
-(defn render-wiki-page-list []
+(defn render-wiki-page-list [req]
   (let [pages (sort-by :name (get-wiki-pages))]
     (render-page
+     req
      "List of All Pages"
      (html
       [:ul#page-list
        (for [page pages]
          [:li (link-to (uri (:name page)) (:name page))])]))))
 
-(defn render-ns-list [ns]
+(defn render-ns-list [ns req]
   (render-page
+   req
    ns
    (html
     [:ul#ns-functions
      (for [f (sort (map name (keys (ns-publics (symbol ns)))))]
        [:li (link-to (uri ns f) f)])])))
 
+(defn render-user-preferences-form [req]
+  (let [sess (:session req)]
+    (render-page
+     req
+     "Preferences"
+     (when (:flash req)
+       [:p#flash (:flash req)])
+     [:form {:method "POST" :action (uri "preferences")}
+      [:p "Display name: "
+       [:input {:type "text" :id "display-name" :name "display-name"
+                :value (h (sess :display-name))}]]
+      [:input.button {:type "submit" :value "Save"}]
+      [:span#cancel (link-to (uri) "Cancel")]])))
+
 ;; request handlers
 
-(defn save-handler [{params :form-params} page-name]
-  (save-wiki-page page-name (params "edit-text") (params "see"))
-  (redirect (uri page-name)))
+(defn save-wiki-page-handler [req page-name]
+  (let [params (:form-params req)
+        params (assoc params "user-display-name"
+                      (:display-name (:session req)))]
+    (save-wiki-page page-name params)
+    (assoc (redirect (uri page-name))
+      :flash "Page saved")))
+
+(defn save-user-preferences-handler [req]
+  (let [params (:form-params req)]
+    (save-user-preferences params)
+    (assoc (redirect (uri "preferences"))
+      :flash "Preferences saved")))
 
 (defn wiki-handler [req]
   (let [params (:query-params req)
-        page-name (url-decode (subs (:uri req) 1))
-        page (get-wiki-page page-name (params "revision"))]
+        page-name (url-decode (subs (:uri req) 1))]
     (if (= :post (:request-method req))
-      (save-handler req page-name)
+      (if (= "preferences" page-name)
+        (save-user-preferences-handler req)
+        (save-wiki-page-handler req page-name))
       (response
        (cond
         
         (zero? (count page-name))
-        (render-page "Home" [:p "Nothing here yet!"])
+        (render-page req "Home" [:p "Nothing here yet!"])
 
         (when (pos? (count page-name))
           (try (ns-publics (symbol page-name))
                (catch Exception _ nil)))
-        (render-ns-list page-name)
+        (render-ns-list page-name req)
      
         (= "list" page-name)
-        (render-wiki-page-list)
+        (render-wiki-page-list req)
 
         (= "changes" page-name)
-        (render-wiki-page-changes (get-wiki-pages-by-date))
-     
+        (render-wiki-page-changes (get-wiki-pages-by-date) req)
+
+        (= "preferences" page-name)
+        (render-user-preferences-form req)
+
         (params "history")
-        (render-wiki-page-history page-name)
+        (render-wiki-page-history page-name req)
 
         (params "edit")
-        (render-wiki-page-edit-form page-name page)
+        (render-wiki-page-edit-form page-name req)
 
         (params "ping")
         (do (send-editing-ping page-name)
             "ok")
         
         :else
-        (render-wiki-page page-name page (params "revision")))))))
+        (render-wiki-page page-name req))))))
+
+(defn wrap-user-preferences [handler]
+  (fn [req]
+    (let [sess (req :response)]
+      (if (or (not (logged-in?))
+              (contains? sess :display-name))
+        (handler req)
+        (let [user-prefs (get-user-preferences)
+              req (assoc req :session
+                         (assoc sess :display-name
+                                (user-prefs :display-name)))
+              response (handler req)]
+          (assoc response :session
+                 (assoc sess :display-name
+                        (user-prefs :display-name))))))))
+
+(defn wrap-flash
+  "Ring's wrap-flash seems to be broken (it obliterates the existing session)
+  so we do our own thing"
+  [handler]
+  (fn [request]
+    (let [session  (request :session)
+          flash    (session :_flash)
+          session  (dissoc session :_flash)
+          request  (assoc request
+                     :session session
+                     :flash flash)
+          response (handler request)
+          resp-session (if (contains? response :session)
+                         (response :session)
+                         session)
+          resp-session (if-let [flash (response :flash)]
+                         (assoc resp-session :_flash flash)
+                         resp-session)]
+      (assoc response :session resp-session))))
 
 (def wrapped-wiki-handler (-> wiki-handler
                               wrap-params
+                              wrap-user-preferences
                               wrap-flash
                               wrap-session
                               wrap-stacktrace

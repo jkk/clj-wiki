@@ -124,8 +124,8 @@
   (let [key (str "editing:" page-name)
         stamp (mc/get-value key)]
     (if stamp
-      (mc/replace-value key (current-user-id) 10)
-      (mc/put-value key (current-user-id) 10))))
+      (mc/replace-value key (current-user-id) 15)
+      (mc/put-value key (current-user-id) 15))))
 
 ;; layout / rendering
 
@@ -248,19 +248,6 @@
                    "Last updated " (render-timestamp (:last-updated page))
                    " by " (:updated-by page))])]))))
 
-(defn render-wiki-page-history [page-name page]
-  (render-wiki-page-changes (get-wiki-page-history page-name)
-                            (str page-name " History")))
-
-(defn render-wiki-page-list []
-  (let [pages (sort-by :name (get-wiki-pages))]
-    (render-page
-     "List of All Pages"
-     (html
-      [:ul#page-list
-       (for [page pages]
-         [:li (link-to (uri (:name page)) (:name page))])]))))
-
 (defn render-wiki-page-changes [pages & [title]]
   (render-page
    (or title "Recent Changes")
@@ -274,6 +261,19 @@
         [:td (render-timestamp (:last-updated page))]
         [:td (:updated-by page)]])])))
 
+(defn render-wiki-page-history [page-name]
+  (render-wiki-page-changes (get-wiki-page-history page-name)
+                            (str page-name " History")))
+
+(defn render-wiki-page-list []
+  (let [pages (sort-by :name (get-wiki-pages))]
+    (render-page
+     "List of All Pages"
+     (html
+      [:ul#page-list
+       (for [page pages]
+         [:li (link-to (uri (:name page)) (:name page))])]))))
+
 (defn render-ns-list [ns]
   (render-page
    ns
@@ -284,7 +284,7 @@
 
 ;; request handlers
 
-(defn save-handler [{params :form-params} page-name page]
+(defn save-handler [{params :form-params} page-name]
   (save-wiki-page page-name (params "edit-text") (params "see"))
   (redirect (uri page-name)))
 
@@ -293,7 +293,7 @@
         page-name (url-decode (subs (:uri req) 1))
         page (get-wiki-page page-name (params "revision"))]
     (if (= :post (:request-method req))
-      (save-handler req page-name page)
+      (save-handler req page-name)
       (response
        (cond
         
@@ -312,7 +312,7 @@
         (render-wiki-page-changes (get-wiki-pages-by-date))
      
         (params "history")
-        (render-wiki-page-history page-name page)
+        (render-wiki-page-history page-name)
 
         (params "edit")
         (render-wiki-page-edit-form page-name page)

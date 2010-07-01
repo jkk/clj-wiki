@@ -17,7 +17,7 @@
 
 ;; config
 
-(def site-title "Clj-Wiki")
+(def site-title "Clojure Examples Wiki")
 
 (def ns-list ["clojure.core"
               "clojure.inspector"

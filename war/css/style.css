@@ -35,12 +35,12 @@ h1 {
     width: 190px;
     clear: right;
     float: right;
-    margin: 15px 0 0 10px;
+    margin: 10px 0 0 10px;
     padding: 0 0 0 10px;
     border-left: 1px solid #ddd;
 }
 #sidebar h3 {
-    margin: 5px 0 10px 0;
+    margin: 10px 0 10px 0;
     padding: 0;
 }
 ul#ns-list {
@@ -109,7 +109,7 @@ h3 {
     color: #aaa;
 }
 #edit-link {
-    margin: 10px;
+    margin: 10px 10px 10px 0;
 }
 textarea {
     font-family: menlo, monaco, consolas, courier-new;
@@ -153,4 +153,25 @@ pre.output {
 }
 .clear {
     clear: both;
+}
+#cancel {
+    margin: 0 0 0 10px;
+}
+
+#changes {
+    margin: 10px 0 0 0;
+}
+#changes td {
+    padding: 5px;
+}
+th {
+    text-align: left;
+    border-bottom: 1px solid #ccc;
+}
+#page-last-updated a {
+    color: #aaa;
+}
+#revision-notice {
+    background: #fec;
+    padding: 10px;
 }

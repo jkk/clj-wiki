@@ -56,9 +56,7 @@ ul#ns-list {
     text-align: right;
 }
 #logout-link, #login-link {
-    margin: 0 0 0 10px;
-}
-#login-link {
+    margin: -3px 0 0 10px;
     float: right;
 }
 .button {
@@ -109,7 +107,8 @@ h3 {
     color: #aaa;
 }
 #edit-link {
-    margin: 10px 10px 10px 0;
+    margin: -3px 10px 0 0;
+    float: left;
 }
 textarea {
     font-family: menlo, monaco, consolas, courier-new;

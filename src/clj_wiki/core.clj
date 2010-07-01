@@ -124,8 +124,8 @@
   (let [key (str "editing:" page-name)
         stamp (mc/get-value key)]
     (if stamp
-      (mc/replace-value key (current-user-id) 15)
-      (mc/put-value key (current-user-id) 15))))
+      (mc/replace-value key (current-user-id) 25)
+      (mc/put-value key (current-user-id) 25))))
 
 ;; layout / rendering
 
@@ -200,10 +200,14 @@
     (render-page
      page-name
      (html
-      (when other-user
+      (if other-user
         [:p#other-user-notice
          "Another user is currently editing this page."
-         " Please wait for them to finish."])
+         " Please wait for them to finish."]
+        [:script {:type "text/javascript"}
+         (str "setInterval(function() {
+                   $.get(\"" (uri page-name {:ping 1}) "\");
+               }, 20000);")])
       [:form {:method "POST" :action (uri page-name)}
        [:p "Examples:"]
        [:textarea {:id "edit-text" :name "edit-text"} (h (:content page))]
@@ -316,6 +320,10 @@
 
         (params "edit")
         (render-wiki-page-edit-form page-name page)
+
+        (params "ping")
+        (do (send-editing-ping page-name)
+            "ok")
         
         :else
         (render-wiki-page page-name page (params "revision")))))))

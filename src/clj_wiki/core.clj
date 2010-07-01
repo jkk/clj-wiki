@@ -162,10 +162,11 @@
 (defn render-session-info [req]
   (let [ui (users/user-info)]
     [:div#session-info
-     (if (boolean (logged-in?))
-       [:div#login-info "Logged in as " [:span#username
-                                         (or (:display-name (:session req))
-                                             (current-user-name))] " "
+     (if (logged-in?)
+       [:div#login-info "Logged in as "
+        [:span#username (link-to (uri "preferences")
+                                 (or (:display-name (:session req))
+                                     (current-user-name)))] " "
         [:span#logout-link.button
          (link-to (.createLogoutURL (:user-service ui) (uri)) "Log out")]]
        [:div#login-info
@@ -181,9 +182,12 @@
       [:li (link-to (uri ns) ns)])]
    [:h3 "Meta"]
    [:ul#meta
-    [:li (link-to (uri "changes") "Recent Changes")]
     (when (:user (users/user-info))
-      [:li (link-to (uri "preferences") "Preferences")])]])
+      [:li (link-to (uri "preferences") "Preferences")])
+    [:li (link-to (uri "changes") "Recent Changes")]
+    [:li (link-to (uri "guidelines") "Guidelines")]
+    [:li (link-to (uri "formatting") "Formatting")]
+    [:li (link-to (uri "todo") "To Do")]]])
 
 (defn render-page [req title & body]
   "Render a page using the given title and body. Title will be escaped,
@@ -230,7 +234,8 @@
                    $.get(\"" (uri page-name {:ping 1}) "\");
                }, 20000);")])
       [:form {:method "POST" :action (uri page-name)}
-       [:p "Examples:"]
+       (when (<= 2 (count (.split page-name "/")))
+         [:p "Examples:"])
        [:textarea {:id "edit-text" :name "edit-text"} (h (:content page))]
        [:p "See also (one function per line, namespace-qualified):"]
        [:textarea {:id "see" :name "see"} (h (:see page))]
@@ -239,7 +244,8 @@
 
 (defn render-wiki-page [page-name req]
   (let [revision ((:query-params req) "revision")
-        page (get-wiki-page page-name revision)]
+        page (get-wiki-page page-name revision)
+        is-fn-page? (<= 2 (count (.split page-name "/")))]
     (render-page
      req
      page-name
@@ -255,9 +261,10 @@
       (when-let [doc (:doc (meta (resolve (symbol page-name))))]
         [:p#doc (.replace doc "\n\n" "<br><br>")])
       (if (zero? (count (:content page)))
-        [:p.empty "[No examples]"]
+        [:p.empty (if is-fn-page? "[No examples]" "[No content]")]
         [:div#examples
-         [:h3 "Examples"]
+         (when is-fn-page?
+           [:h3 "Examples"])
          (render-markdown (:content page))])
       (when (pos? (count (:see page)))
         [:div#see-shell
@@ -335,7 +342,8 @@
 (defn save-wiki-page-handler [req page-name]
   (let [params (:form-params req)
         params (assoc params "user-display-name"
-                      (:display-name (:session req)))]
+                      (or (:display-name (:session req))
+                          (current-user-name)))]
     (save-wiki-page page-name params)
     (assoc (redirect (uri page-name))
       :flash "Page saved")))

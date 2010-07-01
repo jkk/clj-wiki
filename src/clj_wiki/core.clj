@@ -86,14 +86,14 @@
       (ds/find-all)))
 
 (defn get-wiki-page [name & [revision]]
-  (let [key (if revision
-              (ds/create-key "wiki-page-history" (str name " " revision))
-              (ds/create-key "wiki-page" name))]
     (try
-      (let [page (ds/get-entity key)]
+      (let [key (if revision
+                  (ds/create-key "wiki-page-history" (str name " " revision))
+                  (ds/create-key "wiki-page" name))
+            page (ds/get-entity key)]
         (assoc page :content (.getValue (:content page))))
       (catch Exception _
-        nil))))
+        nil)))
 
 (defn get-wiki-page-history [name]
   (-> (ds/query "wiki-page-history")
@@ -298,7 +298,7 @@
        (cond
         
         (zero? (count page-name))
-        (response (render-page "Home" [:p "Nothing here yet!"]))
+        (render-page "Home" [:p "Nothing here yet!"])
 
         (when (pos? (count page-name))
           (try (ns-publics (symbol page-name))

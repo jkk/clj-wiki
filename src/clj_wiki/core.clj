@@ -143,14 +143,21 @@
    [:textarea {:id "see" :name "see"} (h (:see page))]
    [:input.button {:type "submit" :value "Save"}]])
 
+(defn render-timestamp [ts]
+  (when ts
+    (.format (java.text.SimpleDateFormat. "d MMM yyyy, hh:mm aaa z")
+             (java.util.Date. ts))))
+
 (defn render-wiki-page [page-name page edit?]
   (render-page
    page-name
    (html
-    (when-let [arglists (:arglists (meta (resolve (symbol page-name))))]
-      [:p#arglists (str arglists)])
-    (when-let [doc (:doc (meta (resolve (symbol page-name))))]
-      [:p#doc (.replace doc "\n\n" "<br><br>")])
+    (when (and (not edit?) (pos? (count page-name)))
+      (html
+       (when-let [arglists (:arglists (meta (resolve (symbol page-name))))]
+         [:p#arglists (str arglists)])
+       (when-let [doc (:doc (meta (resolve (symbol page-name))))]
+         [:p#doc (.replace doc "\n\n" "<br><br>")])))
     (if edit?
       (render-edit-form page-name page)
       (if (nil? (:content page))
@@ -167,7 +174,7 @@
                      [:li (link-to (uri f) f)])]])
        [:p#page-info
         [:span#page-last-updated
-         "Last updated " (:last-updated page)
+         "Last updated " (render-timestamp (:last-updated page))
          " by " (:updated-by page)]
         [:span#edit-link.button (link-to (uri page-name {:edit 1})
                                          "Edit page")]])))))
@@ -199,8 +206,9 @@
   (let [page-name (url-decode (subs (:uri req) 1))
         page (get-wiki-page page-name)]
     (cond
-     (try (ns-publics (symbol page-name))
-          (catch Exception _ nil))
+     (when (pos? (count page-name))
+       (try (ns-publics (symbol page-name))
+            (catch Exception _ nil)))
      (response (render-ns-list page-name))
      
      (= "list" page-name)
@@ -208,6 +216,9 @@
      
      (= :post (:request-method req))
      (save-handler req page-name page)
+
+     (zero? (count page-name))
+     (response (render-page "Home" [:p "Nothing here yet!"]))
      
      :else
      (response (render-wiki-page page-name page

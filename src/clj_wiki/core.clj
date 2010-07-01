@@ -245,7 +245,9 @@
 (defn render-wiki-page [page-name req]
   (let [revision ((:query-params req) "revision")
         page (get-wiki-page page-name revision)
-        is-fn-page? (<= 2 (count (.split page-name "/")))]
+        is-fn-page? (<= 2 (count (.split page-name "/")))
+        var (try (resolve (symbol page-name))
+                 (catch Exception _ nil))]
     (render-page
      req
      page-name
@@ -256,9 +258,9 @@
         [:p#revision-notice "This is a revision from "
          (render-timestamp (:last-updated page)) ". "
          (link-to (uri page-name) "View current revision")])
-      (when-let [arglists (:arglists (meta (resolve (symbol page-name))))]
+      (when-let [arglists (:arglists (meta var))]
         [:p#arglists (str arglists)])
-      (when-let [doc (:doc (meta (resolve (symbol page-name))))]
+      (when-let [doc (:doc (meta var))]
         [:p#doc (.replace doc "\n\n" "<br><br>")])
       (if (zero? (count (:content page)))
         [:p.empty (if is-fn-page? "[No examples]" "[No content]")]

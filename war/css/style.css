@@ -174,12 +174,14 @@ th {
 }
 #page-last-updated a {
     color: #aaa;
+    text-decoration: underline;
 }
 #revision-notice {
     background: #fec;
     padding: 10px;
 }
 pre.revision-source {
+    white-space: pre-wrap;
     margin: 0 0 10px 0 !important;
     border: 1px solid #ccc;
     padding: 10px;

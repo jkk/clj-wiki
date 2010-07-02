@@ -8,13 +8,16 @@ Local REPL development:
 
     ;; Eval clj-wiki.local and clj.wiki.core, then...
     (clj-wiki.local/start-server wrapped-wiki-handler)
+    ;; Open http://localhost:8181/
 
 Local viewing with App Engine tools:
 
     bin/compile
     bin/start
 
-Deploy to GAE:
+Then open http://localhost:8080/.
+
+To deploy to GAE:
 
     bin/deploy
 

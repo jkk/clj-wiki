@@ -332,6 +332,7 @@
    req
    ns
    (html
+    [:p#ns-doc (:doc (meta (find-ns (symbol ns))))]
     [:ul#ns-functions
      (for [f (sort (map name (keys (ns-publics (symbol ns)))))]
        [:li (link-to (uri ns f) f)])])))
@@ -379,8 +380,7 @@
       (response
        (cond
         
-        (try (ns-publics (symbol page-name))
-             (catch Exception _ nil))
+        (find-ns (symbol page-name))
         (render-ns-list page-name req)
      
         (= "list" page-name)

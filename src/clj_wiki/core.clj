@@ -245,7 +245,9 @@
 (defn render-wiki-page [page-name req]
   (let [revision ((:query-params req) "revision")
         page (get-wiki-page page-name revision)
-        is-fn-page? (<= 2 (count (.split page-name "/")))
+        is-talk-page? (.endsWith page-name ":talk")
+        is-fn-page? (and (not is-talk-page?)
+                         (<= 2 (count (.split page-name "/"))))
         var (try (resolve (symbol page-name))
                  (catch Exception _ nil))]
     (render-page
@@ -279,6 +281,11 @@
          [:pre.revision-source (h (:content page))]
          [:pre.revision-source (h (:see page))])
         [:p#page-info
+         (if is-talk-page?
+           [:span#talk-link.button (link-to (uri (.replace page-name ":talk" ""))
+                                            "Back to page")]
+           [:span#talk-link.button (link-to (uri (str page-name ":talk"))
+                                            "Discuss this page")])
          [:span#edit-link.button (link-to (uri page-name {:edit 1})
                                           "Edit page")]
          (when (:last-updated page)

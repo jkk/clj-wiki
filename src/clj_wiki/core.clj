@@ -54,7 +54,7 @@
   (let [[parts [params]] (split-with string? parts+params)]
     (str "/"
          (join "/" (map url-encode (mapcat #(.split % "/") parts)))
-         (when (pos? (count params))
+         (when-not (empty? params)
            (str "?" (map->query-string params))))))
 
 (defn now []
@@ -262,13 +262,13 @@
         [:p#arglists (str arglists)])
       (when-let [doc (:doc (meta var))]
         [:p#doc (.replace doc "\n\n" "<br><br>")])
-      (if (zero? (count (:content page)))
+      (if (empty? (:content page))
         [:p.empty (if is-fn-page? "[No examples]" "[No content]")]
         [:div#examples
          (when is-fn-page?
            [:h3 "Examples"])
          (render-markdown (:content page))])
-      (when (pos? (count (:see page)))
+      (when-not (empty? (:see page))
         [:div#see-shell
          [:h3 "See Also"]
          [:ul#see (for [f (.split #"[\r\n]+" (:see page))]
@@ -359,7 +359,8 @@
 
 (defn wiki-handler [req]
   (let [params (:query-params req)
-        page-name (url-decode (subs (:uri req) 1))]
+        page-name (url-decode (subs (:uri req) 1))
+        page-name (if (empty? page-name) "home" page-name)]
     (if (= :post (:request-method req))
       (if (= "preferences" page-name)
         (save-user-preferences-handler req)
@@ -367,12 +368,8 @@
       (response
        (cond
         
-        (zero? (count page-name))
-        (render-page req "Home" [:p "Nothing here yet!"])
-
-        (when (pos? (count page-name))
-          (try (ns-publics (symbol page-name))
-               (catch Exception _ nil)))
+        (try (ns-publics (symbol page-name))
+             (catch Exception _ nil))
         (render-ns-list page-name req)
      
         (= "list" page-name)

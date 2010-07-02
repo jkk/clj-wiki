@@ -7,7 +7,10 @@ Google App Engine-based Wiki written in Clojure
 Local REPL development:
 
     ;; Eval clj-wiki.local and clj.wiki.core, then...
+
     (clj-wiki.local/start-server wrapped-wiki-handler)
+    (clj-wiki.local/login "test@example.com" true)
+
     ;; Open http://localhost:8181/
 
 Local viewing with App Engine tools:

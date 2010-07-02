@@ -57,6 +57,13 @@
          (when-not (empty? params)
            (str "?" (map->query-string params))))))
 
+(defn talk-page? [page-name]
+  (.endsWith page-name ":talk"))
+
+(defn fn-page? [page-name]
+  (and (not (talk-page? page-name))
+       (<= 2 (count (.split page-name "/")))))
+
 (defn now []
   (.getTime (java.util.Date.)))
 
@@ -234,7 +241,7 @@
                    $.get(\"" (uri page-name {:ping 1}) "\");
                }, 20000);")])
       [:form {:method "POST" :action (uri page-name)}
-       (when (<= 2 (count (.split page-name "/")))
+       (when (fn-page? page-name)
          [:p "Examples:"])
        [:textarea {:id "edit-text" :name "edit-text"} (h (:content page))]
        [:p "See also (one function per line, namespace-qualified):"]
@@ -245,9 +252,6 @@
 (defn render-wiki-page [page-name req]
   (let [revision ((:query-params req) "revision")
         page (get-wiki-page page-name revision)
-        is-talk-page? (.endsWith page-name ":talk")
-        is-fn-page? (and (not is-talk-page?)
-                         (<= 2 (count (.split page-name "/"))))
         var (try (resolve (symbol page-name))
                  (catch Exception _ nil))]
     (render-page
@@ -265,9 +269,9 @@
       (when-let [doc (:doc (meta var))]
         [:p#doc (.replace doc "\n\n" "<br><br>")])
       (if (empty? (:content page))
-        [:p.empty (if is-fn-page? "[No examples]" "[No content]")]
+        [:p.empty (if (fn-page? page-name) "[No examples]" "[No content]")]
         [:div#examples
-         (when is-fn-page?
+         (when (fn-page? page-name)
            [:h3 "Examples"])
          (render-markdown (:content page))])
       (when-not (empty? (:see page))
@@ -281,7 +285,7 @@
          [:pre.revision-source (h (:content page))]
          [:pre.revision-source (h (:see page))])
         [:p#page-info
-         (if is-talk-page?
+         (if (talk-page? page-name)
            [:span#talk-link.button (link-to (uri (.replace page-name ":talk" ""))
                                             "Back to page")]
            [:span#talk-link.button (link-to (uri (str page-name ":talk"))

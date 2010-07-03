@@ -1,7 +1,7 @@
 (ns clj-wiki.core
   (:gen-class :extends javax.servlet.http.HttpServlet)
   (:use [ring.util.servlet :only [defservice]]
-        [ring.util.response :only [response redirect]]
+        [ring.util.response :only [response redirect content-type]]
         [ring.util.codec :only [url-encode url-decode]]
         [ring.middleware.params :only [wrap-params]]
         [ring.middleware.session :only [wrap-session]]
@@ -420,6 +420,16 @@
                  (assoc sess :display-name
                         (user-prefs :display-name))))))))
 
+;; TODO: sniff the content type first to make sure it's empty or "text/html"
+(defn wrap-utf8
+  "The default behavior with Ring and GAE seems to be non-utf8, so change that"
+  [handler]
+  (fn [req]
+    (let [resp (handler req)]
+      (if (= 200 (:status resp))
+        (content-type resp "text/html; charset=utf-8")
+        resp))))
+
 (defn wrap-flash
   "Ring's wrap-flash seems to be broken (it obliterates the existing session)
   so we do our own thing"
@@ -441,6 +451,7 @@
       (assoc response :session resp-session))))
 
 (def wrapped-wiki-handler (-> wiki-handler
+                              wrap-utf8
                               wrap-params
                               wrap-user-preferences
                               wrap-flash

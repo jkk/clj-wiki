@@ -161,6 +161,9 @@ SyntaxHighlighter.brushes.Clojure = function() {
 			css: 'value' },
 		{ regex: /^[+-]?\b\d+(\.\d*)?([eE][+-]?\d+|M)?\b/g,
 			css: 'value' },
+                // ratio
+                { regex: /[+-]?\b\d+\/\d+\b/g,
+                        css: 'value' },
 		// booleans+nil
 		{ regex: /\b(true|false|nil)\b/g,
 			css: 'value' },

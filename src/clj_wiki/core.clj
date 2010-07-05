@@ -254,7 +254,8 @@
         page (get-wiki-page page-name revision)
         [ns-name fn-name] (.split page-name "/" 2)
         var (try (resolve (symbol ns-name fn-name))
-                 (catch Exception _ nil))]
+                 (catch Exception _ nil))
+        ns (find-ns (symbol page-name))]
     (render-page
      req
      (or fn-name page-name)
@@ -271,10 +272,14 @@
         [:p#arglists (str arglists)])
       (when-let [doc (:doc (meta var))]
         [:p#doc (.replace doc "\n\n" "<br><br>")])
+      (when ns
+        [:p#ns-doc (:doc (meta ns))])
       (if (empty? (:content page))
-        [:p.empty (if (fn-page? page-name) "[No examples]" "[No content]")]
+        [:p.empty (if fn-name
+                    "[No examples]"
+                    (if ns "" "[No content]"))]
         [:div#examples
-         (when (fn-page? page-name)
+         (when fn-name
            [:h3 "Examples"])
          (render-markdown (:content page))])
       (when-not (empty? (:see page))
@@ -282,6 +287,12 @@
          [:h3 "See Also"]
          [:ul#see (for [f (.split #"[\r\n]+" (:see page))]
                     [:li (link-to (uri f) f)])]])
+      (when (and ns (not revision))
+        (html
+         [:h3 "All functions"]
+         [:ul#ns-functions
+          (for [f (sort (map name (keys (ns-publics (symbol page-name)))))]
+            [:li (link-to (uri page-name f) f)])]))
       (if revision
         (html
          [:h3 "Revision Source"]
@@ -330,16 +341,6 @@
        (for [page pages]
          [:li (link-to (uri (:name page)) (:name page))])]))))
 
-(defn render-ns-list [ns req]
-  (render-page
-   req
-   ns
-   (html
-    [:p#ns-doc (:doc (meta (find-ns (symbol ns))))]
-    [:ul#ns-functions
-     (for [f (sort (map name (keys (ns-publics (symbol ns)))))]
-       [:li (link-to (uri ns f) f)])])))
-
 (defn render-user-preferences-form [req]
   (let [sess (:session req)]
     (render-page
@@ -383,9 +384,6 @@
       (response
        (cond
         
-        (find-ns (symbol page-name))
-        (render-ns-list page-name req)
-     
         (= "list" page-name)
         (render-wiki-page-list req)
 

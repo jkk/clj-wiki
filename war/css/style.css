@@ -42,7 +42,7 @@ h1 {
     margin: 10px 0 10px 0;
     padding: 0;
 }
-ul#ns-list {
+ul#ns-list, ul#meta {
     margin: 0 0 0 30px;
     padding: 0;
     line-height: 1.6em;
@@ -137,6 +137,10 @@ pre, code {
     font-family: menlo, monaco, "Consolas", "Bitstream Vera Sans Mono", "Courier New", Courier, monospace;
     line-height: 14px !important;
     font-size: 12px;
+}
+p code {
+    font-weight: bold;
+    color: #444;
 }
 form {
     margin: 10px 0 0 0;

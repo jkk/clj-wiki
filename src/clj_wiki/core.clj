@@ -257,7 +257,7 @@
                  (catch Exception _ nil))]
     (render-page
      req
-     page-name
+     (or fn-name page-name)
      (html
       (when (:flash req)
         [:p#flash (:flash req)])
@@ -265,6 +265,8 @@
         [:p#revision-notice "This is a revision from "
          (render-timestamp (:last-updated page)) ". "
          (link-to (uri page-name) "View current revision")])
+      (when fn-name
+        [:p#ns-name (link-to (uri ns-name) ns-name)])
       (when-let [arglists (:arglists (meta var))]
         [:p#arglists (str arglists)])
       (when-let [doc (:doc (meta var))]

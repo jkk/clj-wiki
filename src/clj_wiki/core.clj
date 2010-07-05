@@ -53,7 +53,7 @@
   query params."
   (let [[parts [params]] (split-with string? parts+params)]
     (str "/"
-         (join "/" (map url-encode (mapcat #(.split % "/") parts)))
+         (join "/" (map url-encode (mapcat #(.split % "/" -1) parts)))
          (when-not (empty? params)
            (str "?" (map->query-string params))))))
 
@@ -62,7 +62,7 @@
 
 (defn fn-page? [page-name]
   (and (not (talk-page? page-name))
-       (<= 2 (count (.split page-name "/")))))
+       (<= 2 (count (.split page-name "/" -1)))))
 
 (defn now []
   (.getTime (java.util.Date.)))
@@ -252,7 +252,8 @@
 (defn render-wiki-page [page-name req]
   (let [revision ((:query-params req) "revision")
         page (get-wiki-page page-name revision)
-        var (try (resolve (symbol page-name))
+        [ns-name fn-name] (.split page-name "/" 2)
+        var (try (resolve (symbol ns-name fn-name))
                  (catch Exception _ nil))]
     (render-page
      req

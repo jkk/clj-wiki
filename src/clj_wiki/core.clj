@@ -74,11 +74,12 @@
       (.getEmail (:user ui))
       "Anonymous")))
 
-(defn current-user-name []
-  (let [ui (users/user-info)]
-    (if (:user ui)
-      (.getNickname (:user ui))
-      "Anonymous")))
+(defn current-user-name [req]
+  (or (:display-name (:session req))
+      (let [ui (users/user-info req)]
+        (if (:user ui)
+          (.getNickname (:user ui))
+          "Anonymous"))))
 
 (defn logged-in? []
   (:user (users/user-info)))
@@ -179,8 +180,7 @@
      (if (logged-in?)
        [:div#login-info "Logged in as "
         [:span#username (link-to (uri "preferences")
-                                 (or (:display-name (:session req))
-                                     (current-user-name)))] " "
+                                 (current-user-name req))] " "
         [:span#logout-link.button
          (link-to (.createLogoutURL (:user-service ui) (uri)) "Log out")]]
        [:div#login-info
@@ -353,27 +353,23 @@
          [:li (link-to (uri (:name page)) (:name page))])]))))
 
 (defn render-user-preferences-form [req]
-  (let [sess (:session req)]
-    (render-page
-     req
-     "Preferences"
-     (when (:flash req)
-       [:p#flash (:flash req)])
-     [:form {:method "POST" :action (uri "preferences")}
-      [:p "Display name: "
-       [:input {:type "text" :id "display-name" :name "display-name"
-                :value (h (or (sess :display-name)
-                              (current-user-name)))}]]
-      [:input.button {:type "submit" :value "Save"}]
-      [:span#cancel (link-to (uri) "Cancel")]])))
+  (render-page
+   req
+   "Preferences"
+   (when (:flash req)
+     [:p#flash (:flash req)])
+   [:form {:method "POST" :action (uri "preferences")}
+    [:p "Display name: "
+     [:input {:type "text" :id "display-name" :name "display-name"
+              :value (h (current-user-name req))}]]
+    [:input.button {:type "submit" :value "Save"}]
+    [:span#cancel (link-to (uri) "Cancel")]]))
 
 ;; request handlers
 
 (defn save-wiki-page-handler [req page-name]
   (let [params (:form-params req)
-        params (assoc params "user-display-name"
-                      (or (:display-name (:session req))
-                          (current-user-name)))]
+        params (assoc params "user-display-name" (current-user-name req))]
     (save-wiki-page page-name params)
     (assoc (redirect (uri page-name))
       :flash "Page saved")))

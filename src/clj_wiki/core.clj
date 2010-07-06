@@ -88,7 +88,7 @@
 (defn get-wiki-pages []
   (ds/find-all (ds/query "wiki-page")))
 
-(defn get-wiki-pages-by-date []
+(defn get-wiki-pages-history []
   (-> (ds/query "wiki-page-history")
       (ds/order-by :last-updated :desc)
       (ds/find-all)))
@@ -399,7 +399,7 @@
         (render-wiki-page-list req)
 
         (= "changes" page-name)
-        (render-wiki-page-changes (get-wiki-pages-by-date) req)
+        (render-wiki-page-changes (get-wiki-pages-history) req)
 
         (= "preferences" page-name)
         (render-user-preferences-form req)

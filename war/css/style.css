@@ -161,6 +161,7 @@ pre.output {
 }
 
 #changes {
+    width: 95%;
     margin: 10px 0 0 0;
     border-collapse: collapse;
     border-spacing: 0;
@@ -191,6 +192,9 @@ pre.revision-source {
     padding: 10px;
     background: #eee;
 }
+pre.diff {
+    white-space: pre-wrap;
+}
 #other-user-notice {
     padding: 10px;
     background: #fdd;
@@ -206,4 +210,14 @@ li.empty-content a {
 }
 #ns-functions li {
     margin: 0 0 2px 0;
+}
+ins {
+    background: #dfd;
+    text-decoration: none;
+    color: #080;
+}
+del {
+    background: #fdd;
+    text-decoration: none;
+    color: #800;
 }

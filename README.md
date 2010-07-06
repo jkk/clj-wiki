@@ -28,6 +28,8 @@ To deploy to GAE:
 
 Code for doing local REPL-based development on App Engine largely taken from http://github.com/christianberg/compojureongae.
 
+Diff lib: http://code.google.com/p/google-diff-match-patch/
+
 ## License
 
 Copyright (C) 2010 Justin Kramer

@@ -13,7 +13,8 @@
             [appengine.users :as users]
             [appengine.memcache :as mc])
   (:import com.petebevin.markdown.MarkdownProcessor
-           [com.google.appengine.api.datastore Text]))
+           [com.google.appengine.api.datastore Text]
+           name.fraser.neil.plaintext.diff_match_patch))
 
 ;; config
 
@@ -67,6 +68,14 @@
 (defn now []
   (.getTime (java.util.Date.)))
 
+(defn diff [text1 text2]
+  (for [d (.diff_main (diff_match_patch.) text1 text2)]
+    (let [text (h (.text d))]
+      (case (.name (.operation d))
+            "DELETE" [:del text]
+            "EQUAL" text
+            "INSERT" [:ins text]))))
+
 ;; TODO: unique IDs for anonymous?
 (defn current-user-id []
   (let [ui (users/user-info)]
@@ -109,6 +118,14 @@
       (ds/filter-by = :name name)
       (ds/order-by :last-updated :desc)
       (ds/find-all)))
+
+(defn get-wiki-page-history-ids [name]
+  (into []
+        (map #(.getName (:key %))
+             (ds/find-all
+              (-> (ds/query "wiki-page-history")
+                  (ds/filter-by = :name name)
+                  (ds/order-by :last-updated :desc))))))
 
 (defn get-wiki-page-ids []
   "Returns a set of all wiki page keys. Faster than getting all entities"
@@ -329,18 +346,50 @@
    (or title "Recent Changes")
    (html
     [:table#changes
-     [:tr [:th "Page"] [:th "When"] [:th "Who"]]
+     [:tr [:th "Page"] [:th "Diff"] [:th "When"] [:th "Who"]]
      (for [page (take history-limit pages)]
        [:tr
+        [:td (link-to (uri (:name page)) (h (:name page)))]
+        [:td (link-to (uri (:name page) {:diff 1
+                                         :new (:last-updated page)})
+                      "Diff")]
         [:td (link-to (uri (:name page) {:revision (:last-updated page)})
-                      (:name page))]
-        [:td (render-timestamp (:last-updated page))]
+                      (render-timestamp (:last-updated page)))]
         [:td (:updated-by page)]])])))
 
 (defn render-wiki-page-history [page-name req]
   (render-wiki-page-changes (get-wiki-page-history page-name)
                             req
                             (str page-name " History")))
+
+(defn render-wiki-page-diff [page-name req]
+  (let [params (:query-params req)
+        page-history-ids (get-wiki-page-history-ids page-name)
+        new-page (get-wiki-page page-name (params "new"))
+        old-rev (or (params "old")
+                    (if-let [old-key (second
+                                      (drop-while
+                                       #(not= % (str page-name " "
+                                                     (:last-updated new-page)))
+                                       page-history-ids))]
+                      (second (.split old-key " "))))
+        old-page (when old-rev
+                   (get-wiki-page page-name old-rev))]
+    (render-page
+     req
+     page-name
+     (html
+      [:p#revision-notice "This is a diff between revision "
+       (if-not old-page
+         "[None]"
+         (link-to (uri page-name {:revision (:last-updated old-page)})
+                  (render-timestamp (:last-updated old-page))))
+       " and "
+       (link-to (uri page-name {:revision (:last-updated new-page)})
+                (render-timestamp (:last-updated new-page)))]
+      [:pre.diff
+       (diff (or (:content old-page) "")
+             (:content new-page))]))))
 
 (defn render-wiki-page-list [req]
   (let [pages (sort-by :name (get-wiki-pages))]
@@ -403,6 +452,9 @@
         (params "history")
         (render-wiki-page-history page-name req)
 
+        (params "diff")
+        (render-wiki-page-diff page-name req)
+        
         (params "edit")
         (render-wiki-page-edit-form page-name req)
 

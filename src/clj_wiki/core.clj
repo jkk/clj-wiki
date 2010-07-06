@@ -391,8 +391,8 @@
        (link-to (uri page-name {:revision (:last-updated new-page)})
                 (render-timestamp (:last-updated new-page)))]
       [:pre.diff
-       (diff (or (:content old-page) "")
-             (:content new-page))]))))
+       (diff (str (:content old-page) "\n\n" (:see old-page))
+             (str (:content new-page) "\n\n" (:see new-page)))]))))
 
 (defn render-wiki-page-list [req]
   (let [pages (sort-by :name (get-wiki-pages))]

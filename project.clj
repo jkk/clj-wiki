@@ -4,7 +4,7 @@
   :namespaces [clj-wiki.core]
   :dependencies [[org.clojure/clojure "1.2.0-master-SNAPSHOT"]
                  [org.clojure/clojure-contrib "1.2.0-SNAPSHOT"]
-                 [ring/ring "0.2.3"]
+                 [ring/ring "0.2.4"]
                  [hiccup "0.2.6"]
                  [org.clojars.nakkaya/markdownj "1.0.2b4"]
                  [appengine "0.3-SNAPSHOT"]

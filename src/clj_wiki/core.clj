@@ -278,9 +278,8 @@
        [:span#cancel (link-to (uri page-name) "Cancel")]]))))
 
 ;; TODO: this function is getting unwieldy
-(defn render-wiki-page [page-name req]
+(defn render-wiki-page [page-name page req]
   (let [revision ((:query-params req) "revision")
-        page (get-wiki-page page-name revision)
         [ns-name fn-name] (.split page-name "/" 2)
         var (try (resolve (symbol ns-name fn-name))
                  (catch Exception _ nil))
@@ -436,38 +435,46 @@
 (defn wiki-handler [req]
   (let [params (:query-params req)
         page-name (url-decode (subs (:uri req) 1))
-        page-name (if (empty? page-name) "home" page-name)]
+        page-name (cond
+                   (empty? page-name) "home"
+                   (and (empty? params) (:query-string req)) (str page-name "?")
+                   (or (= page-name " ") (= page-name "clojure.core/ ")) "+"
+                   :else page-name)]
     (if (= :post (:request-method req))
       (if (= "preferences" page-name)
         (save-user-preferences-handler req)
         (save-wiki-page-handler req page-name))
-      (response
-       (cond
+      (cond
         
         (= "list" page-name)
-        (render-wiki-page-list req)
+        (response (render-wiki-page-list req))
 
         (= "changes" page-name)
-        (render-wiki-page-changes (get-wiki-pages-history) req)
+        (response (render-wiki-page-changes (get-wiki-pages-history) req))
 
         (= "preferences" page-name)
-        (render-user-preferences-form req)
+        (response (render-user-preferences-form req))
 
         (params "history")
-        (render-wiki-page-history page-name req)
+        (response (render-wiki-page-history page-name req))
 
         (params "diff")
-        (render-wiki-page-diff page-name req)
+        (response (render-wiki-page-diff page-name req))
         
         (params "edit")
-        (render-wiki-page-edit-form page-name req)
+        (response (render-wiki-page-edit-form page-name req))
 
         (params "ping")
-        (do (send-editing-ping page-name)
-            "ok")
+        (response (do (send-editing-ping page-name)
+                      "ok"))
         
         :else
-        (render-wiki-page page-name req))))))
+        (if-let [page (get-wiki-page page-name (params "revision"))]
+          (response (render-wiki-page page-name page req))
+          ;; FIXME: needs to check other namespaces
+          (if (resolve (symbol "clojure.core" page-name))
+            (redirect (uri "clojure.core" page-name))
+            (response (render-wiki-page page-name nil req))))))))
 
 (defn wrap-user-preferences [handler]
   (fn [req]

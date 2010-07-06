@@ -69,12 +69,15 @@
   (.getTime (java.util.Date.)))
 
 (defn diff [text1 text2]
-  (for [d (.diff_main (diff_match_patch.) text1 text2)]
-    (let [text (h (.text d))]
-      (case (.name (.operation d))
-            "DELETE" [:del text]
-            "EQUAL" text
-            "INSERT" [:ins text]))))
+  (let [dmp (diff_match_patch.)
+        diffs (.diff_main dmp text1 text2)]
+    (.diff_cleanupSemantic dmp diffs) ; mutates diffs!
+    (for [d diffs]
+      (let [text (h (.text d))]
+        (case (.name (.operation d))
+              "DELETE" [:del text]
+              "EQUAL" text
+              "INSERT" [:ins text])))))
 
 ;; TODO: unique IDs for anonymous?
 (defn current-user-id []

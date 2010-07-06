@@ -191,8 +191,9 @@
 
 (defn render-timestamp [ts]
   (when ts
-    (.format (java.text.SimpleDateFormat. "d MMM yyyy, hh:mm aaa z")
-             (java.util.Date. ts))))
+    [:span.timestamp
+     (.format (java.text.SimpleDateFormat. "d MMM yyyy, HH:mm:ss z")
+              (java.util.Date. ts))]))
 
 (defn render-session-info [req]
   (let [ui (users/user-info)]

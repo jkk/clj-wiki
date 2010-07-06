@@ -199,3 +199,11 @@ pre.revision-source {
     background: #dfd;
     padding: 10px;
 }
+li.empty-content a {
+    background: #eee;
+    color: #888;
+    padding: 0 3px;
+}
+#ns-functions li {
+    margin: 0 0 2px 0;
+}

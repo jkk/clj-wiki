@@ -109,6 +109,13 @@
       (ds/order-by :last-updated :desc)
       (ds/find-all)))
 
+(defn get-wiki-page-ids []
+  "Returns a set of all wiki page keys. Faster than getting all entities"
+  (into #{}
+   (map #(.getName (:key %))
+        (ds/find-all
+         (doto (ds/query "wiki-page") (.setKeysOnly))))))
+
 (defn save-wiki-page [name input]
   (let [rec {:name name
              :content (Text. (input "edit-text"))
@@ -249,6 +256,7 @@
        [:input.button {:type "submit" :value "Save"}]
        [:span#cancel (link-to (uri page-name) "Cancel")]]))))
 
+;; TODO: this function is getting unwieldy
 (defn render-wiki-page [page-name req]
   (let [revision ((:query-params req) "revision")
         page (get-wiki-page page-name revision)
@@ -288,11 +296,14 @@
          [:ul#see (for [f (.split #"[\r\n]+" (:see page))]
                     [:li (link-to (uri f) f)])]])
       (when (and ns (not revision))
-        (html
-         [:h3 "All functions"]
-         [:ul#ns-functions
-          (for [f (sort (map name (keys (ns-publics (symbol page-name)))))]
-            [:li (link-to (uri page-name f) f)])]))
+        (let [page-ids (get-wiki-page-ids)]
+          (html
+           [:h3 "All functions"]
+           [:ul#ns-functions
+            (for [f (sort (map name (keys (ns-publics (symbol page-name)))))]
+              [:li {:class (when-not (page-ids (str page-name "/" f))
+                             "empty-content")}
+               (link-to (uri page-name f) f)])])))
       (if revision
         (html
          [:h3 "Revision Source"]

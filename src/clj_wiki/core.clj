@@ -14,7 +14,8 @@
             [appengine.memcache :as mc])
   (:import com.petebevin.markdown.MarkdownProcessor
            [com.google.appengine.api.datastore Text]
-           name.fraser.neil.plaintext.diff_match_patch))
+           name.fraser.neil.plaintext.diff_match_patch
+           name.fraser.neil.plaintext.diff_match_patch$Operation))
 
 ;; config
 
@@ -75,10 +76,10 @@
     (.diff_cleanupSemantic dmp diffs) ; mutates diffs!
     (for [d diffs]
       (let [text (h (.text d))]
-        (case (.name (.operation d))
-              "DELETE" [:del text]
-              "EQUAL" text
-              "INSERT" [:ins text])))))
+        (condp = (.operation d)
+            diff_match_patch$Operation/INSERT [:ins text]
+            diff_match_patch$Operation/DELETE [:del text]
+            diff_match_patch$Operation/EQUAL text)))))
 
 ;; TODO: unique IDs for anonymous?
 (defn current-user-id []

@@ -219,12 +219,11 @@
       [:li (link-to (uri ns) ns)])]
    [:h3 "Meta"]
    [:ul#meta
-    (when (:user (users/user-info))
-      [:li (link-to (uri "preferences") "Preferences")])
     [:li (link-to (uri "changes") "Recent Changes")]
     [:li (link-to (uri "guidelines") "Guidelines")]
     [:li (link-to (uri "formatting") "Formatting")]
-    [:li (link-to (uri "todo") "To Do")]]])
+    [:li (link-to (uri "todo") "To Do")]
+    [:li (link-to "http://github.com/jkk/clj-wiki" "Source Code")]]])
 
 (defn render-page [req title & body]
   "Render a page using the given title and body. Title will be escaped,

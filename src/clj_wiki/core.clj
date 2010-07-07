@@ -8,7 +8,8 @@
         [ring.middleware.stacktrace :only [wrap-stacktrace]]
         [hiccup.core :only [h html]]
         [hiccup.page-helpers :only [link-to doctype include-css include-js]]
-        [clojure.contrib.string :only [join]])
+        [clojure.contrib.string :only [join]]
+        [org.danlarkin [json :as json]])
   (:require [appengine.datastore :as ds]
             [appengine.users :as users]
             [appengine.memcache :as mc])
@@ -344,6 +345,14 @@
                      "Last updated " (render-timestamp (:last-updated page))
                      " by " (:updated-by page))])])))))
 
+(defn render-wiki-page-json [page req]
+  (json/encode-to-str
+   {:name (:name page)
+    :raw-content (:content page)
+    :html-content (render-markdown (:content page))
+    :see (vec (.split #"[\r\n]+" (:see page)))
+    :last-updated (:last-updated page)}))
+
 (defn render-wiki-page-changes [pages req & [title]]
   (render-page
    req
@@ -471,7 +480,9 @@
         
         :else
         (if-let [page (get-wiki-page page-name (params "revision"))]
-          (response (render-wiki-page page-name page req))
+          (if (= "json" (params "format"))
+            (response (render-wiki-page-json page req))
+            (response (render-wiki-page page-name page req)))
           ;; FIXME: needs to check other namespaces
           (if (resolve (symbol "clojure.core" page-name))
             (redirect (uri "clojure.core" page-name))

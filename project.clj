@@ -8,6 +8,7 @@
                  [hiccup "0.2.6"]
                  [org.clojars.nakkaya/markdownj "1.0.2b4"]
                  [google-diff-match-patch "0.1"]
+                 [org.danlarkin/clojure-json "1.1"]
                  [appengine "0.3-SNAPSHOT"]
                  [com.google.appengine/appengine-api-1.0-sdk "1.3.4"]]
   :dev-dependencies [[leiningen/lein-swank "1.2.0-SNAPSHOT"]

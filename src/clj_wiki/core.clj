@@ -31,6 +31,7 @@
               "clojure.repl"
               "clojure.set"
               "clojure.stacktrace"
+              "clojure.string"
               "clojure.template"
               "clojure.test"
               "clojure.walk"

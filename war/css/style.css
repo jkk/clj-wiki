@@ -89,6 +89,10 @@ h2#page-title {
 h3 {
     font-size: 14px;
 }
+#main-content h3 {
+    padding-top: 10px;
+    border-top: 1px solid #aaa;
+}
 #main-content {
 /*    min-height: 300px;*/
     width: 650px;
